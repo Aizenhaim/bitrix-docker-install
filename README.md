@@ -11,13 +11,18 @@
 > у него нет неинтерактивного режима.
 
 
-## Как скачать
+## Два способа установки
+
+**Скриптом — быстро.** Меню с проверкой сервера, установкой, переустановкой и удалением:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Aizenhaim/bitrix-docker-install/main/bitrix-install.sh -o bitrix-install.sh
-less bitrix-install.sh      # посмотрите, что он делает
 bash bitrix-install.sh
 ```
+
+**Вручную — по шагам.** Восемь шагов с объяснением каждой команды: [INSTRUCTION.md](INSTRUCTION.md)
+
+Оба пути ведут к одному результату. Скрипт делает ровно то, что описано в инструкции.
 
 ## Контрольная сумма
 
