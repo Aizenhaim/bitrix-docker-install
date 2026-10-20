@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Установка демосайта 1С-Битрикс в Docker на Ubuntu 24.04 — пошаговая инструкция">
+<title>Битрикс в Docker на Ubuntu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#F6F7F9;
+    --surface:#FFFFFF;
+    --surface-sunk:#EDEFF3;
+    --ink:#15171C;
+    --ink-soft:#3C424E;
+    --muted:#646C7B;
+    --rule:#DCE0E7;
+    --rule-soft:#E8EBF0;
+    --accent:#2F5BD0;
+    --accent-soft:#E7EDFB;
+    --danger:#A32015;
+    --danger-soft:#FBEAE8;
+    --warn:#8A5A00;
+    --warn-soft:#FBF2DF;
+    --code-ground:#1B1E25;
+    --code-ink:#E6E9EF;
+    --code-dim:#8A93A5;
+    --shadow:0 1px 2px rgba(21,23,28,.05),0 8px 24px -16px rgba(21,23,28,.25);
+    --measure:68ch;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#101216;
+      --surface:#171A20;
+      --surface-sunk:#1E222A;
+      --ink:#E8EBF0;
+      --ink-soft:#C3C9D4;
+      --muted:#8F98A8;
+      --rule:#2A2F39;
+      --rule-soft:#232830;
+      --accent:#7CA0F0;
+      --accent-soft:#1B2740;
+      --danger:#F08478;
+      --danger-soft:#33201D;
+      --warn:#E0B25F;
+      --warn-soft:#2E2617;
+      --code-ground:#0B0D11;
+      --code-ink:#DDE2EA;
+      --code-dim:#767F91;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101216;
+    --surface:#171A20;
+    --surface-sunk:#1E222A;
+    --ink:#E8EBF0;
+    --ink-soft:#C3C9D4;
+    --muted:#8F98A8;
+    --rule:#2A2F39;
+    --rule-soft:#232830;
+    --accent:#7CA0F0;
+    --accent-soft:#1B2740;
+    --danger:#F08478;
+    --danger-soft:#33201D;
+    --warn:#E0B25F;
+    --warn-soft:#2E2617;
+    --code-ground:#0B0D11;
+    --code-ink:#DDE2EA;
+    --code-dim:#767F91;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 24px 96px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:40px;
+  }
+  @media (min-width:1080px){
+    .wrap{grid-template-columns:232px minmax(0,1fr);align-items:start;gap:56px}
+  }
+
+  .masthead{
+    grid-column:1/-1;
+    border-bottom:1px solid var(--rule);
+    padding:56px 0 28px;
+    margin-bottom:4px;
+  }
+  .kicker{
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(30px,4.6vw,46px);
+    line-height:1.08;
+    letter-spacing:-.022em;
+    font-weight:600;
+    margin:0 0 16px;
+    text-wrap:balance;
+    max-width:18ch;
+  }
+  .standfirst{
+    margin:0;
+    max-width:var(--measure);
+    font-size:17.5px;
+    color:var(--ink-soft);
+  }
+  .facts{
+    list-style:none;
+    margin:28px 0 0;
+    padding:0;
+    display:grid;
+    gap:0;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    border-top:1px solid var(--rule-soft);
+  }
+  .facts div{
+    padding:12px 18px 12px 0;
+    border-right:1px solid var(--rule-soft);
+  }
+  .facts div:last-child{border-right:0}
+  .facts dt{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 3px;
+  }
+  .facts dd{
+    margin:0;
+    font-size:15px;
+    font-weight:500;
+    font-variant-numeric:tabular-nums;
+  }
+
+  nav.toc{display:none}
+  @media (min-width:1080px){
+    nav.toc{
+      display:block;
+      position:sticky;
+      top:28px;
+      font-size:13.5px;
+      line-height:1.45;
+    }
+    nav.toc p{
+      font-family:"IBM Plex Mono",monospace;
+      font-size:10.5px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin:0 0 12px;
+    }
+    nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+    nav.toc a{
+      color:var(--ink-soft);
+      text-decoration:none;
+      display:block;
+      border-left:2px solid var(--rule);
+      padding-left:12px;
+    }
+    nav.toc a:hover{color:var(--accent);border-left-color:var(--accent)}
+    nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    nav.toc .grp{margin-top:8px}
+  }
+
+  main{min-width:0;max-width:760px}
+
+  section{padding-top:44px}
+  section + section{border-top:1px solid var(--rule-soft);margin-top:40px}
+
+  h2{
+    font-size:25px;
+    line-height:1.22;
+    letter-spacing:-.015em;
+    font-weight:600;
+    margin:0 0 6px;
+    text-wrap:balance;
+  }
+  h2 .num{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:13px;
+    font-weight:500;
+    color:var(--accent);
+    letter-spacing:.06em;
+    display:block;
+    margin-bottom:7px;
+  }
+  h3{
+    font-size:17px;
+    font-weight:600;
+    letter-spacing:-.008em;
+    margin:34px 0 8px;
+  }
+  p{margin:0 0 14px;max-width:var(--measure)}
+  ul,ol{margin:0 0 14px;padding-left:22px;max-width:var(--measure)}
+  li{margin-bottom:6px}
+  li::marker{color:var(--muted)}
+  strong{font-weight:600}
+  a{color:var(--accent)}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.875em;
+    background:var(--surface-sunk);
+    border:1px solid var(--rule-soft);
+    border-radius:3px;
+    padding:.08em .34em;
+    word-break:break-word;
+  }
+
+  .cmd{
+    background:var(--code-ground);
+    color:var(--code-ink);
+    border-radius:6px;
+    margin:0 0 18px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .cmd-head{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--code-dim);
+    padding:9px 16px 0;
+  }
+  .cmd pre{
+    margin:0;
+    padding:12px 16px 15px;
+    overflow-x:auto;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:13.5px;
+    line-height:1.72;
+    tab-size:2;
+  }
+  .cmd pre code{
+    background:none;border:0;padding:0;font-size:inherit;color:inherit;word-break:normal;
+  }
+  /* светлый блок = содержимое файла или адрес, его не выполняют */
+  .cmd.file{
+    background:var(--surface);
+    color:var(--ink);
+    border:1px solid var(--rule);
+    border-left:3px solid var(--warn);
+    box-shadow:none;
+  }
+  .cmd.file .cmd-head{color:var(--warn)}
+  .cmd.file pre{color:var(--ink)}
+
+  .note{
+    border-left:3px solid var(--accent);
+    background:var(--accent-soft);
+    padding:13px 16px;
+    margin:0 0 18px;
+    border-radius:0 5px 5px 0;
+    max-width:var(--measure);
+  }
+  .note p:last-child{margin-bottom:0}
+  .note .tag{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:block;
+    margin-bottom:5px;
+  }
+  .danger{border-left-color:var(--danger);background:var(--danger-soft)}
+  .danger .tag{color:var(--danger)}
+  .warn{border-left-color:var(--warn);background:var(--warn-soft)}
+  .warn .tag{color:var(--warn)}
+
+  .tscroll{overflow-x:auto;margin:0 0 20px;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14.5px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  thead th{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:500;
+    background:var(--surface-sunk);
+    border-bottom:1px solid var(--rule);
+    white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:0}
+  td code{font-size:.84em}
+  .nowrap{white-space:nowrap}
+
+  .check{
+    list-style:none;
+    padding:0;
+    margin:0 0 14px;
+    max-width:var(--measure);
+  }
+  .check li{
+    position:relative;
+    padding-left:26px;
+    margin-bottom:7px;
+  }
+  .check li::before{
+    content:"";
+    position:absolute;
+    left:0;
+    top:.52em;
+    width:11px;
+    height:11px;
+    border:1.5px solid var(--muted);
+    border-radius:2px;
+  }
+
+  footer{
+    grid-column:1/-1;
+    border-top:1px solid var(--rule);
+    margin-top:52px;
+    padding-top:20px;
+    color:var(--muted);
+    font-size:13.5px;
+    max-width:var(--measure);
+  }
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  @media print{
+    body{background:#fff;color:#000;font-size:10.5pt;orphans:3;widows:3}
+    .wrap{display:block;max-width:none;padding:0}
+    nav.toc{display:none}
+    main{max-width:none}
+    p,li{break-inside:avoid}
+    /* блок команд: серая заливка и жирная тёмная полоса слева */
+    .cmd{
+      background:#ECEEF2;color:#000;box-shadow:none;
+      border:1px solid #9AA0AB;border-left:4px solid #2B3038;
+      break-inside:avoid;
+    }
+    .cmd-head{color:#2B3038;font-weight:600}
+    .cmd pre{white-space:pre-wrap;word-break:break-word;overflow-x:visible;color:#000}
+    /* блок файла: белый фон, пунктир и полоса другого тона */
+    .cmd.file{background:#fff;border:1px dashed #9AA0AB;border-left:4px solid #8A5A00}
+    .cmd.file .cmd-head{color:#8A5A00;font-weight:700}
+    .note{break-inside:avoid;border:1px solid #999;background:#FAFAFA}
+    .tscroll{overflow-x:visible;break-inside:auto}
+    table{font-size:9.5pt}
+    section{padding-top:20px}
+    h2,h3{break-after:avoid}
+    tr{break-inside:avoid}
+    a{color:#000;text-decoration:underline}
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Рунбук · Ubuntu 24.04 LTS</p>
+    <h1>Битрикс в Docker на Ubuntu</h1>
+    <p class="standfirst">Установка демосайта «1С-Битрикс: Управление сайтом» в окружении <code>bitrix-tools/env-docker</code>. Восемь шагов, пройдены на чистом сервере.</p>
+    <dl class="facts">
+      <div><dt>Проверено</dt><dd>19.10.2026</dd></div>
+      <div><dt>Docker</dt><dd>29.9.1</dd></div>
+      <div><dt>Контейнеров</dt><dd>11</dd></div>
+      <div><dt>Порт сайта</dt><dd>8588</dd></div>
+      <div><dt>Места нужно</dt><dd>от 10 ГБ</dd></div>
+    </dl>
+  </header>
+
+  <nav class="toc" aria-label="Содержание">
+    <p>Содержание</p>
+    <ol>
+      <li><a href="#script">Быстрый путь: скрипт</a></li>
+      <li><a href="#start">Прежде чем начать</a></li>
+      <li><a href="#env">Что такое окружение</a></li>
+      <li class="grp"><a href="#s1">1 · Подготовка системы</a></li>
+      <li><a href="#s2">2 · Установка Docker</a></li>
+      <li><a href="#s3">3 · Распаковка окружения</a></li>
+      <li><a href="#s4">4 · Пароли базы данных</a></li>
+      <li><a href="#s5">5 · Правка compose-файла</a></li>
+      <li><a href="#s6">6 · Запуск контейнеров</a></li>
+      <li><a href="#s7">7 · Установщик в браузере</a></li>
+      <li><a href="#s8">8 · Проверка и уборка</a></li>
+      <li class="grp"><a href="#problems">Если что-то пошло не так</a></li>
+      <li><a href="#remove">Переустановка и удаление</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="script">
+      <h2>Быстрый путь: скрипт</h2>
+      <p>Всё, что описано ниже, умеет делать скрипт — меню с проверкой сервера, установкой, переустановкой и удалением. Он доводит сервер до момента «открой установщик в браузере», дальше мастер проходите сами.</p>
+      <div class="cmd">
+        <div class="cmd-head">скачать, посмотреть, запустить</div>
+        <pre><code>curl -fsSL https://raw.githubusercontent.com/Aizenhaim/bitrix-docker-install/main/bitrix-install.sh -o bitrix-install.sh
+less bitrix-install.sh
+bash bitrix-install.sh</code></pre>
+      </div>
+      <p>Вторая строка — посмотреть, что внутри, перед запуском. Выход из просмотра — клавиша <code>q</code>.</p>
+      <p>Дальше читайте, только если хотите пройти всё руками или разобраться, что именно скрипт делает.</p>
+    </section>
+
+    <section id="start">
+      <h2>Прежде чем начать</h2>
+      <p>Нужен сервер с Ubuntu 24.04, 4 ГБ RAM, от 10 ГБ свободного места и доступ по SSH под root. Все команды выполняются на сервере.</p>
+      <div class="note warn">
+        <span class="tag">Два вида блоков</span>
+        <p>Блоки с командами копируйте в терминал целиком и смотрите на вывод. Блоки с подписью <strong>«НЕ ВЫПОЛНЯТЬ»</strong> — это содержимое файла или адрес для браузера, в терминал их вставлять нельзя.</p>
+        <p>Копируйте блок целиком, а не по строчке: при переносе длинной строки теряется дефис, и <code>apt</code> отвечает <code>Unable to locate package</code>, не сделав ничего.</p>
+      </div>
+    </section>
+
+    <section id="env">
+      <h2>Что такое окружение</h2>
+      <p>Окружение — это набор программ, без которых сайт не работает. Сам Битрикс написан на PHP, то есть это просто папка с кодом. Код сам по себе не умеет ни принимать запросы из интернета, ни хранить товары и заказы. Ему нужны соседи:</p>
+      <ul>
+        <li><strong>веб-сервер</strong> (nginx) — принимает запросы от браузера;</li>
+        <li><strong>PHP</strong> — выполняет код Битрикса;</li>
+        <li><strong>база данных</strong> (MySQL) — хранит всё содержимое сайта.</li>
+      </ul>
+      <p>Вот эта тройка и есть минимальное окружение. Плюс необязательные помощники — кэш, поиск, уведомления.</p>
+      <div class="note">
+        <span class="tag">Аналогия</span>
+        <p>Битрикс — это водитель, окружение — машина. Водитель без машины никуда не доедет, и неважно, насколько он хорош.</p>
+      </div>
+      <p>«Окружение от вендора» в нашем случае — это <code>bitrix-tools/env-docker</code>: готовый комплект, где все программы уже подобраны нужных версий и настроены под Битрикс. Собрать то же самое руками можно — поставить nginx, PHP, MySQL и выверить конфиги, — но там десятки параметров, и ошибиться легко.</p>
+      <p>Что лежит внутри скачанного архива:</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Что</th><th>Размер</th><th>Зачем</th></tr></thead>
+          <tbody>
+            <tr><td class="nowrap"><code>docker-compose.yml</code></td><td class="nowrap">488 строк</td><td>Список контейнеров: какие запускать, какие порты, какие тома</td></tr>
+            <tr><td class="nowrap"><code>confs/</code></td><td class="nowrap">1,9 МБ<br>230 файлов</td><td>Настройки для каждой программы: nginx, PHP, MySQL, Redis, Sphinx</td></tr>
+            <tr><td class="nowrap"><code>sources/</code></td><td class="nowrap">783 МБ</td><td>Исходники, из которых собраны образы</td></tr>
+            <tr><td class="nowrap"><code>.env_mysql</code><br>и соседние</td><td class="nowrap">по несколько<br>строк</td><td>Пароли и параметры, их правим на шаге 4</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Главная ценность — те самые 230 файлов настроек. Один только конфиг nginx занимает 237 строк, выверенных под Битрикс: как отдавать статику, куда передавать PHP, как обрабатывать служебные пути.</p>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">ШАГ 1</span>Подключение и подготовка системы</h2>
+      <p>На своём компьютере откройте терминал (в Windows — PowerShell) и подключитесь, подставив адрес сервера:</p>
+      <div class="cmd">
+        <div class="cmd-head">подключение</div>
+        <pre><code>ssh root@&lt;IP-адрес_сервера&gt;</code></pre>
+      </div>
+      <p>Пароль при вводе не отображается — это нормально. После входа приглашение станет вида <code>root@имя-сервера:~#</code>.</p>
+      <div class="cmd">
+        <div class="cmd-head">обновление и нужные пакеты</div>
+        <pre><code>apt update &amp;&amp; apt upgrade -y
+apt install -y ca-certificates curl gnupg git unzip</code></pre>
+      </div>
+      <p>Если в конце появилось <strong>Pending kernel upgrade</strong> — перезагрузитесь сейчас, до установки Docker: <code>reboot</code>. Позже перезагрузка оборвёт работающие контейнеры.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">ШАГ 2</span>Установка Docker</h2>
+      <div class="cmd">
+        <div class="cmd-head">снести старые версии из репозиториев Ubuntu</div>
+        <pre><code>for pkg in docker.io docker-doc docker-compose \
+           docker-compose-v2 podman-docker \
+           containerd runc; do
+  apt-get remove -y $pkg
+done</code></pre>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">ключ и репозиторий Docker</div>
+        <pre><code>install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+  -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+echo "deb [arch=$(dpkg --print-architecture) \
+signed-by=/etc/apt/keyrings/docker.asc] \
+https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release &amp;&amp; echo "$VERSION_CODENAME") stable" \
+  &gt; /etc/apt/sources.list.d/docker.list
+
+apt update</code></pre>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">установка и автозапуск</div>
+        <pre><code>apt install -y docker-ce docker-ce-cli containerd.io
+apt install -y docker-buildx-plugin docker-compose-plugin
+systemctl enable --now docker</code></pre>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">проверка</div>
+        <pre><code>docker --version &amp;&amp; docker compose version</code></pre>
+      </div>
+      <p>Должны появиться две строки с версиями.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">ШАГ 3</span>Скачивание и распаковка окружения</h2>
+      <div class="cmd">
+        <div class="cmd-head">скачать и распаковать</div>
+        <pre><code>mkdir -p ~/1c-bitrix
+cd ~/1c-bitrix
+wget https://github.com/bitrix-tools/env-docker/archive/refs/heads/main.zip
+unzip main.zip
+cd ~/1c-bitrix/env-docker-main</code></pre>
+      </div>
+      <p>Архив весит 693 МБ. Без <code>unzip</code> каталог <code>env-docker-main</code> не появится, и все следующие шаги будут падать.</p>
+      <div class="cmd">
+        <div class="cmd-head">проверка</div>
+        <pre><code>ls -la ~/1c-bitrix/env-docker-main/docker-compose.yml</code></pre>
+      </div>
+      <p>Команда должна показать строку с файлом.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">ШАГ 4</span>Пароли базы данных</h2>
+      <div class="note danger">
+        <span class="tag">Только до первого запуска</span>
+        <p>Пароли читаются один раз — когда создаётся том с базой. Правка файла после запуска не применится, даже после <code>restart</code>.</p>
+      </div>
+      <p>Придумайте два пароля — для <code>root</code> и для пользователя сайта <code>bitrix</code>. Только латиница и цифры, от 16 символов, без кириллицы и без <code>$ " ' \ `</code>. Можно сгенерировать:</p>
+      <div class="cmd">
+        <div class="cmd-head">сгенерировать и выписать</div>
+        <pre><code>echo "root:   $(tr -dc 'A-Za-z0-9' &lt;/dev/urandom | head -c 20)"
+echo "bitrix: $(tr -dc 'A-Za-z0-9' &lt;/dev/urandom | head -c 20)"</code></pre>
+      </div>
+      <p>Впишите их в файл, подставив свои значения вместо <code>ROOT_PW</code> и <code>USER_PW</code>:</p>
+      <div class="cmd">
+        <div class="cmd-head">выполнить ровно один раз</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+sed -i 's/CHANGE_MYSQL_ROOT_PASSWORD_HERE/ROOT_PW/' .env_mysql
+printf 'MYSQL_DATABASE=bitrix\n' &gt;&gt; .env_mysql
+printf 'MYSQL_USER=bitrix\n' &gt;&gt; .env_mysql
+printf 'MYSQL_PASSWORD="USER_PW"\n' &gt;&gt; .env_mysql</code></pre>
+      </div>
+      <p>Три нижние строки создадут базу <code>bitrix</code> и одноимённого пользователя при первом запуске. В окружении их нет, они дописываются вручную.</p>
+      <div class="cmd">
+        <div class="cmd-head">проверка</div>
+        <pre><code>cat ~/1c-bitrix/env-docker-main/.env_mysql</code></pre>
+      </div>
+      <p>Должны быть видны ваши пароли и все пять строк. Если осталось <code>CHANGE_..._HERE</code> или <code>ROOT_PW</code> — команда выполнена дважды или без подстановки; исправьте файл в <code>nano</code>.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">ШАГ 5</span>Правка compose-файла</h2>
+      <p>Две правки до запуска: убрать PostgreSQL и отключить порт 80 у контейнера <code>lego</code>.</p>
+
+      <h3>Убрать PostgreSQL</h3>
+      <p>Окружение поднимает две базы, Битриксу нужна одна. Лишняя занимает 640 МБ образа и память.</p>
+      <div class="cmd">
+        <div class="cmd-head">оставить только MySQL</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+cp docker-compose.yml docker-compose.yml.bak
+sed -i '107,150s/^/#/' docker-compose.yml
+sed -i '233s/^/#/' docker-compose.yml</code></pre>
+      </div>
+      <p>Первая <code>sed</code> комментирует блок сервиса <code>postgres</code>, вторая — строку <code>- postgres</code> в зависимостях <code>php</code>. Без второй Compose откажется запускаться.</p>
+
+      <h3>Отключить порт 80 у lego</h3>
+      <p>Контейнер <code>lego</code> занимает порт 80. Если на сервере уже есть веб-сервер, запуск оборвётся ошибкой <code>address already in use</code>. Для сайта по IP этот контейнер не нужен.</p>
+      <div class="cmd">
+        <div class="cmd-head">закомментировать публикацию порта</div>
+        <pre><code>sed -i '463,464s/^/#/' docker-compose.yml
+docker compose config -q &amp;&amp; echo "файл в порядке"</code></pre>
+      </div>
+      <p>Номера строк — для версии окружения от 16.10.2026. Проверить, что закомментировалось именно нужное:</p>
+      <div class="cmd">
+        <div class="cmd-head">показать секцию lego</div>
+        <pre><code>grep -n -A9 "^  lego:" docker-compose.yml</code></pre>
+      </div>
+      <div class="cmd file">
+        <div class="cmd-head">не выполнять · так должно выглядеть</div>
+        <pre><code>  lego:
+    image: quay.io/bitrix24/lego:4.35.2-v1-alpine
+    container_name: dev_lego
+    restart: unless-stopped
+    env_file:
+      - .env
+#    ports:
+#      - "80:80"</code></pre>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">ШАГ 6</span>Запуск контейнеров</h2>
+      <div class="cmd">
+        <div class="cmd-head">поднять стек</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+docker compose up -d</code></pre>
+      </div>
+      <p>Первый запуск качает около 3,3 ГБ образов — от 5 до 15 минут. Прерывать не нужно.</p>
+      <div class="cmd">
+        <div class="cmd-head">проверка статуса</div>
+        <pre><code>docker compose ps</code></pre>
+      </div>
+      <p>Должны подняться 11 контейнеров со статусом <code>Up</code>. Если какой-то в <code>Exited</code> или <code>Restarting</code> — смотрите его лог, подставив имя сервиса:</p>
+      <div class="cmd">
+        <div class="cmd-head">лог одного сервиса</div>
+        <pre><code>docker compose logs --tail=50 mysql</code></pre>
+      </div>
+      <p>В логе MySQL при первом запуске нормальны: создание <code>root@localhost</code> с пустым паролем, остановка и повторный старт, пропуск файлов часовых поясов. Важна последняя строка — <code>ready for connections</code>.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">ШАГ 7</span>Установщик в браузере</h2>
+      <p>Скрипт установки кладётся в корень сайта <strong>внутри контейнера</strong>, под пользователем <code>bitrix</code>.</p>
+      <div class="cmd">
+        <div class="cmd-head">войти в контейнер</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+docker compose exec --user=bitrix php sh</code></pre>
+      </div>
+      <p>Приглашение сменится на <code>/opt/www $</code> — вы внутри.</p>
+      <div class="cmd">
+        <div class="cmd-head">внутри контейнера</div>
+        <pre><code>cd /opt/www/
+wget https://www.1c-bitrix.ru/download/scripts/bitrixsetup.php
+exit</code></pre>
+      </div>
+      <div class="note warn">
+        <span class="tag">wget — до exit</span>
+        <p>Скачивать нужно, пока приглашение выглядит как <code>/opt/www $</code>. После <code>exit</code> вы снова на сервере, и файл ляжет не туда — браузер его не увидит.</p>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">проверка: файл на месте</div>
+        <pre><code>docker compose exec php ls /opt/www/</code></pre>
+      </div>
+      <p>Откройте в браузере <code>http://&lt;IP-адрес_сервера&gt;:8588/bitrixsetup.php</code> и пройдите мастер: демоверсия «Управление сайтом» редакция «Бизнес» → принять лицензию → <strong>снять</strong> галочку регистрации → предварительная проверка → база данных → администратор сайта → решение «Интернет-магазин» → шаблон по умолчанию.</p>
+
+      <h3>Экран «Создание базы данных»</h3>
+      <p>Два поля подставлены неверно, их надо затереть и вписать своё:</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Поле</th><th>Подставлено</th><th>Вписать</th></tr></thead>
+          <tbody>
+            <tr><td>Сервер</td><td><code>localhost</code></td><td><strong><code>mysql</code></strong></td></tr>
+            <tr><td>Пользователь базы данных</td><td>Существующий</td><td>оставить</td></tr>
+            <tr><td>Имя пользователя</td><td>пусто</td><td><strong><code>bitrix</code></strong></td></tr>
+            <tr><td>Пароль</td><td>пусто</td><td>значение <code>MYSQL_PASSWORD</code></td></tr>
+            <tr><td>База данных</td><td>Существующая</td><td>оставить</td></tr>
+            <tr><td>Имя базы данных</td><td><code>sitemanager</code></td><td><strong><code>bitrix</code></strong></td></tr>
+            <tr><td>Права на файлы и папки</td><td>0644 и 0755</td><td>оставить</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>В поле «Сервер» именно слово <code>mysql</code>: база живёт в соседнем контейнере, и для Битрикса <code>localhost</code> — это он сам, пустое место.</p>
+      <p>На экране «Создание администратора» заводится вход в админку — это отдельный пароль, не от базы. Запишите логин и пароль сразу: восстановление идёт по почте, а отправка писем на сервере не настроена.</p>
+      <p>Установка решения идёт несколько минут с полосой прогресса. Страницу не перезагружайте.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">ШАГ 8</span>Проверка и уборка</h2>
+      <div class="cmd file">
+        <div class="cmd-head">не выполнять · открыть в браузере</div>
+        <pre><code>http://&lt;IP-адрес_сервера&gt;:8588/
+http://&lt;IP-адрес_сервера&gt;:8588/bitrix/admin/</code></pre>
+      </div>
+      <p>Вход в админку — по логину и паролю администратора с шага 7.</p>
+      <p>Когда сайт открылся, удалите установщик: он лежит в открытом доступе и позволяет запустить установку заново.</p>
+      <div class="cmd">
+        <div class="cmd-head">удалить установщик</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+docker compose exec --user=bitrix php rm /opt/www/bitrixsetup.php</code></pre>
+      </div>
+      <p>Архив окружения тоже можно убрать, освободится 693 МБ:</p>
+      <div class="cmd">
+        <div class="cmd-head">необязательно</div>
+        <pre><code>rm ~/1c-bitrix/main.zip</code></pre>
+      </div>
+    </section>
+
+    <section id="problems">
+      <h2>Если что-то пошло не так</h2>
+      <p>Здесь только то, на что натыкаются в реальности.</p>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Что видно</th><th>Что произошло</th><th>Что делать</th></tr></thead>
+          <tbody>
+            <tr><td><code>no configuration file provided: not found</code></td><td>Команда запущена не в каталоге окружения, или архив не распакован</td><td><code>unzip main.zip</code>, затем <code>cd ~/1c-bitrix/env-docker-main</code></td></tr>
+            <tr><td><code>Unable to locate package docker-composeplugin</code></td><td>Длинная строка разорвалась при копировании и потеряла дефис. <code>apt</code> при этом не сделал ничего</td><td>Скопировать блок заново целиком</td></tr>
+            <tr><td><code>failed to bind host port 0.0.0.0:80/tcp</code></td><td>Порт 80 занят другим веб-сервером, <code>lego</code> не смог встать</td><td>Шаг 5, отключение порта у <code>lego</code></td></tr>
+            <tr><td>Страница на :8588 отдаёт <strong>403</strong></td><td>Корень сайта пуст — <code>bitrixsetup.php</code> не скачан или лёг не туда</td><td>Шаг 7, скачивание до <code>exit</code></td></tr>
+            <tr><td><code>rm: can't remove … No such file or directory</code></td><td>Файл не в контейнере, а на сервере: <code>wget</code> выполнен после <code>exit</code></td><td>Удалять без <code>docker compose exec</code>: <code>rm ~/1c-bitrix/env-docker-main/имя.php</code></td></tr>
+            <tr><td><code>hostname: unrecognized option: I</code></td><td>Команда для сервера выполнена внутри контейнера</td><td>Выйти: <strong>Ctrl+D</strong> или <code>exit</code> с Enter</td></tr>
+            <tr><td>Мастер не принимает пароль из env-файла</td><td>Пароль поменян после первого запуска, или в нём типографские кавычки</td><td>Пересоздать тома, см. ниже</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="remove">
+      <h2>Переустановка и удаление</h2>
+
+      <h3>Поставить заново с нуля</h3>
+      <div class="note danger">
+        <span class="tag">Стирает сайт и базу</span>
+        <p>Флаг <code>-v</code> удаляет тома: файлы сайта, базу, кэши. Отменить нельзя. Пароли в env-файлах можно оставить прежние — тома создадутся заново и подхватят их.</p>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">стереть и поднять заново</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+docker compose down -v
+docker compose up -d</code></pre>
+      </div>
+      <p>Дальше повторяются шаги 7 и 8.</p>
+
+      <h3>Снести Docker с сервера полностью</h3>
+      <div class="cmd">
+        <div class="cmd-head">остановить и удалить пакеты</div>
+        <pre><code>cd ~/1c-bitrix/env-docker-main
+docker compose down -v
+
+systemctl stop docker docker.socket
+systemctl disable docker
+
+apt purge -y docker-ce docker-ce-cli
+apt purge -y containerd.io
+apt purge -y docker-buildx-plugin
+apt purge -y docker-compose-plugin
+apt purge -y docker-ce-rootless-extras
+apt purge -y docker.io containerd
+apt autoremove -y</code></pre>
+      </div>
+      <p>Пакеты удаляются по одному-два: одной длинной строкой <code>apt</code> спотыкается на переносе и не делает ничего.</p>
+      <div class="cmd">
+        <div class="cmd-head">данные, репозиторий, остатки</div>
+        <pre><code>rm -rf /var/lib/docker /var/lib/containerd
+rm -f /etc/apt/sources.list.d/docker.list
+rm -f /etc/apt/keyrings/docker.asc
+ip link delete docker0
+rm -rf /run/docker /run/containerd /var/run/docker.sock
+groupdel docker
+rm -rf ~/1c-bitrix
+apt update</code></pre>
+      </div>
+      <div class="cmd">
+        <div class="cmd-head">проверка: все команды должны ответить пустотой</div>
+        <pre><code>dpkg -l | grep -E "docker|containerd"
+command -v docker dockerd containerd runc ctr
+ls -d /var/lib/docker /etc/docker /run/docker
+getent group docker
+ip link show docker0</code></pre>
+      </div>
+      <p>Останутся только цепочки <code>DOCKER</code> в <code>iptables</code>. Они нигде не сохраняются и исчезают при перезагрузке.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Проверено на Ubuntu 24.04 LTS с Docker 29.9.1, окружение bitrix-tools/env-docker от 16.10.2026. Печать в PDF — Ctrl+P.</p>
+  </footer>
+
+</div>
+</body>
+</html>
