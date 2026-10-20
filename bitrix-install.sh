@@ -420,41 +420,48 @@ PY
 server_ip() { curl -4 -s --max-time 5 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}'; }
 
 show_params() {
-    local ip; ip="$(server_ip)"
+    local ip rp up src
+    ip="$(server_ip)"
+
+    # если окружение развёрнуто — берём настоящие пароли из файла, а не из памяти
+    if [ -f "$WORK/.env_mysql" ]; then
+        rp=$(grep '^MYSQL_ROOT_PASSWORD=' "$WORK/.env_mysql" | cut -d'"' -f2)
+        up=$(grep '^MYSQL_PASSWORD='      "$WORK/.env_mysql" | cut -d'"' -f2)
+        src="из файла .env_mysql установленного окружения"
+    else
+        rp="$ROOT_PW"; up="$USER_PW"
+        src="сгенерированы сейчас, установка ещё не выполнялась"
+    fi
+
     step "Параметры для мастера установки"
+    printf '  %s%s%s\n' "$C_DIM" "$src" "$C_0"
+
+    printf '\n  %sУСТАНОВЩИК%s\n' "$C_DIM" "$C_0"
+    printf '    %shttp://%s:%s/bitrixsetup.php%s\n' "$C_CY" "$ip" "$PORT" "$C_0"
+
+    printf '\n  %sЭКРАН «СОЗДАНИЕ БАЗЫ ДАННЫХ»%s\n' "$C_DIM" "$C_0"
+    printf '    %sСервер%s ....................  %s%s%s\n'        "$C_DIM" "$C_0" "$C_B" "mysql" "$C_0"
+    printf '    %sПользователь базы данных%s ..  %sСуществующий%s\n' "$C_DIM" "$C_0" "$C_B" "$C_0"
+    printf '    %sИмя пользователя%s ..........  %sbitrix%s\n'     "$C_DIM" "$C_0" "$C_B" "$C_0"
+    printf '    %sПароль%s ....................  %s%s%s\n'        "$C_DIM" "$C_0" "$C_F" "$up" "$C_0"
+    printf '    %sБаза данных%s ...............  %sСуществующая%s\n' "$C_DIM" "$C_0" "$C_B" "$C_0"
+    printf '    %sИмя базы данных%s ...........  %sbitrix%s\n'     "$C_DIM" "$C_0" "$C_B" "$C_0"
+
+    printf '\n  %sЭКРАН «СОЗДАНИЕ АДМИНИСТРАТОРА»%s\n' "$C_DIM" "$C_0"
+    printf '    %sЛогин%s .....................  %s%s%s\n'  "$C_DIM" "$C_0" "$C_B" "$ADMIN_LOGIN" "$C_0"
+    printf '    %sПароль%s ....................  %s%s%s\n'  "$C_DIM" "$C_0" "$C_F" "$ADMIN_PW" "$C_0"
+    printf '    %sэти два придумываете вы, скрипт их только хранит%s\n' "$C_DIM" "$C_0"
+
+    printf '\n  %sВСЕ ПАРОЛИ РАЗОМ%s\n' "$C_DIM" "$C_0"
+    printf '    %sMySQL root%s ................  %s%s%s\n' "$C_DIM" "$C_0" "$C_F" "$rp" "$C_0"
+    printf '    %sMySQL bitrix%s ..............  %s%s%s\n' "$C_DIM" "$C_0" "$C_F" "$up" "$C_0"
+    printf '    %sАдмин сайта%s ...............  %s%s / %s%s\n' "$C_DIM" "$C_0" "$C_F" "$ADMIN_LOGIN" "$ADMIN_PW" "$C_0"
+    printf '    %sФайл с паролями БД%s ........  %s%s/.env_mysql%s\n' "$C_DIM" "$C_0" "$C_B" "$WORK" "$C_0"
+
+    printf '\n  %sПОСЛЕ УСТАНОВКИ%s\n' "$C_DIM" "$C_0"
+    printf '    %sСайт%s ......................  %shttp://%s:%s/%s\n'              "$C_DIM" "$C_0" "$C_CY" "$ip" "$PORT" "$C_0"
+    printf '    %sАдминка%s ...................  %shttp://%s:%s/bitrix/admin/%s\n' "$C_DIM" "$C_0" "$C_CY" "$ip" "$PORT" "$C_0"
     echo
-    info "Установщик:  http://${ip}:${PORT}/bitrixsetup.php"
-    echo
-    bold "  Экран «Создание базы данных»"
-    info "  Сервер ....................  mysql"
-    info "  Пользователь базы данных ..  Существующий"
-    info "  Имя пользователя ..........  bitrix"
-    info "  Пароль ....................  ${USER_PW}"
-    info "  База данных ...............  Существующая"
-    info "  Имя базы данных ...........  bitrix"
-    echo
-    bold "  Экран «Создание администратора» — вводится вручную"
-    info "  Логин .....................  ${ADMIN_LOGIN}"
-    info "  Пароль ....................  ${ADMIN_PW}"
-    echo
-    bold "  Все пароли разом"
-    info "  MySQL root ................  ${ROOT_PW}"
-    info "  MySQL bitrix ..............  ${USER_PW}"
-    info "  Админ сайта ...............  ${ADMIN_LOGIN} / ${ADMIN_PW}"
-    info "  Пароли БД в файле .........  ${WORK}/.env_mysql"
-    echo
-    bold "  После установки сайта"
-    info "  Сайт ......................  http://${ip}:${PORT}/"
-    info "  Админка ...................  http://${ip}:${PORT}/bitrix/admin/"
-    echo
-    bold "  Когда сайт заработает — уберите файлы установщика"
-    info "  Они лежат в корне сайта и открыты любому, кто знает адрес:"
-    info "  через них можно запустить установку заново и затереть ваш сайт."
-    info "  После успешной установки Битрикс стирает установщик сам."
-    info "  Если мастер оборвался — удалите вручную и скачайте заново:"
-    echo
-    info "    cd ${WORK}"
-    info "    docker compose exec --user=bitrix php rm -f /opt/www/bitrixsetup.php"
 }
 
 show_state() {
@@ -595,7 +602,9 @@ do_remove() {
         case "$c" in
             1) echo
                warn "Будут стёрты контейнеры, тома с базой и сайтом, каталог $ENV_DIR."
-               local a; read -rp "  Введите УДАЛИТЬ для подтверждения: " a
+               local a
+               printf '  Введите %s%sУДАЛИТЬ%s для подтверждения: ' "$C_B" "$C_NO" "$C_0"
+               read -r a
                [ "$a" = "УДАЛИТЬ" ] || { info "Отменено."; continue; }
                remove_bitrix
                INSTALLED=no; CHECKS=unknown
@@ -604,7 +613,9 @@ do_remove() {
                warn "Будут стёрты: сайт, база, каталог $ENV_DIR, все пакеты Docker,"
                warn "все образы и тома в /var/lib/docker, репозиторий и ключ."
                warn "Если на сервере есть другие контейнеры — они тоже погибнут."
-               local a; read -rp "  Введите УДАЛИТЬ ВСЁ для подтверждения: " a
+               local a
+               printf '  Введите %s%sУДАЛИТЬ ВСЁ%s для подтверждения: ' "$C_B" "$C_NO" "$C_0"
+               read -r a
                [ "$a" = "УДАЛИТЬ ВСЁ" ] || { info "Отменено."; continue; }
                remove_bitrix
                remove_docker
