@@ -23,13 +23,13 @@ bad()   { printf '  %s✗%s %s\n' "$C_NO" "$C_0" "$*"; }
 warn()  { printf '  %s!%s %s\n' "$C_Y" "$C_0" "$*"; }
 die()   { printf '\n%sОшибка:%s %s\n\n' "$C_NO" "$C_0" "$*" >&2; exit 1; }
 step()  { printf '\n%s%s%s%s\n' "$C_B" "$C_CY" "$*" "$C_0"; }
-pause() { echo; read -rsp "  Enter — вернуться в меню… " _ || true; echo; }
+pause() { echo; read -rsp "$(printf '  %sEnter — вернуться в меню…%s' "$C_OK" "$C_0") " _ || true; echo; }
 
 genpw() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20; }
 
 SPINLOG=/tmp/bitrix-install-step.log
 
-# spin "что делаем" команда...  — крутилка, пока команда работает
+# spin "Что делаем" команда...  — крутилка, пока команда работает
 spin() {
     local msg="$1"; shift
     if [ ! -t 1 ]; then
@@ -102,21 +102,21 @@ do_checks() {
     pyver=$(python3 -V 2>&1 | awk '{print $2}')
 
     printf '\n  %sСИСТЕМА%s\n' "$C_DIM" "$C_0"
-    check "права root"                   '[ "$(id -u)" -eq 0 ]'
+    check "Права root"                   '[ "$(id -u)" -eq 0 ]'
     check "ОС"                           '[ "${VERSION_ID:-}" = "24.04" ]'              "${PRETTY_NAME:-неизвестна}"
-    check "архитектура"                  '[ "$(dpkg --print-architecture)" = "amd64" ]' "$(dpkg --print-architecture 2>/dev/null)"
+    check "Архитектура"                  '[ "$(dpkg --print-architecture)" = "amd64" ]' "$(dpkg --print-architecture 2>/dev/null)"
     check "python3"                      'command -v python3'                           "${pyver:-нет}"
     check "systemd"                      '[ -d /run/systemd/system ]'
     check "apt не занят"                 '! fuser /var/lib/dpkg/lock-frontend'
 
     printf '\n  %sРЕСУРСЫ%s\n' "$C_DIM" "$C_0"
-    check "свободно на диске"            "[ ${free_gb:-0} -ge 10 ]"                     "${free_gb:-?} ГБ, нужно от 10"
-    check "оперативная память"           "[ ${ram_mb:-0} -ge 3500 ]"                    "${ram_mb:-?} МБ, нужно от 3500"
+    check "Свободно на диске"            "[ ${free_gb:-0} -ge 10 ]"                     "${free_gb:-?} ГБ, нужно от 10"
+    check "Оперативная память"           "[ ${ram_mb:-0} -ge 3500 ]"                    "${ram_mb:-?} МБ, нужно от 3500"
 
     printf '\n  %sМЕСТО ПОД УСТАНОВКУ%s\n' "$C_DIM" "$C_0"
-    check "каталог $ENV_DIR свободен"    '[ ! -e "$ENV_DIR" ]'
-    check "порт $PORT свободен"          "! ss -tlnp 2>/dev/null | grep -q ':$PORT '"
-    check "порт $((PORT+1)) свободен"    "! ss -tlnp 2>/dev/null | grep -q ':$((PORT+1)) '"   "для https"
+    check "Каталог $ENV_DIR свободен"    '[ ! -e "$ENV_DIR" ]'
+    check "Порт $PORT свободен"          "! ss -tlnp 2>/dev/null | grep -q ':$PORT '"
+    check "Порт $((PORT+1)) свободен"    "! ss -tlnp 2>/dev/null | grep -q ':$((PORT+1)) '"   "для https"
 
     printf '\n  %sСЕТЬ%s\n' "$C_DIM" "$C_0"
     check "github.com доступен"          'curl -fsL --max-time 8 -o /dev/null https://github.com'
@@ -144,40 +144,42 @@ do_checks() {
 
 ask_port() {
     local p
-    read -rp "  Новый порт [$PORT]: " p
+    printf '  %sEnter — оставить текущий%s\n' "$C_DIM" "$C_0"
+    read -rp "$(printf '  %sНовый порт [%s]:%s' "$C_OK" "$PORT" "$C_0") " p
     p="${p:-$PORT}"
     if ! [[ "$p" =~ ^[0-9]+$ ]] || [ "$p" -lt 1024 ] || [ "$p" -gt 65535 ]; then
-        bad "нужно число от 1024 до 65535"; return
+        bad "Нужно число от 1024 до 65535"; return
     fi
     PORT="$p"; CHECKS=unknown
-    ok "порт: $PORT (https $((PORT+1)))"
-    warn "проверку надо пройти заново — пункт 1"
+    ok "Порт: $PORT (https $((PORT+1)))"
+    warn "Проверку надо пройти заново — пункт 1"
 }
 
 ask_pw() {
     local which="$1" p
-    read -rp "  Пароль $which (Enter — сгенерировать): " p
+    read -rp "$(printf '  %sПароль %s (Enter — сгенерировать):%s' "$C_OK" "$which" "$C_0") " p
     if [ -z "$p" ]; then
         p="$(genpw)"
     elif ! [[ "$p" =~ ^[A-Za-z0-9_.-]{8,}$ ]]; then
-        bad "годятся латиница, цифры, _ . - и минимум 8 символов"; return
+        bad "Годятся латиница, цифры, _ . - и минимум 8 символов"; return
     fi
     case "$which" in
         root)   ROOT_PW="$p" ;;
         bitrix) USER_PW="$p" ;;
         admin)  ADMIN_PW="$p" ;;
     esac
-    ok "пароль $which: $p"
+    ok "Пароль $which: ${C_F}${p}${C_0}"
 }
 
 ask_login() {
     local l
-    read -rp "  Логин администратора сайта [$ADMIN_LOGIN]: " l
+    printf '  %sEnter — оставить текущий%s\n' "$C_DIM" "$C_0"
+    read -rp "$(printf '  %sЛогин администратора сайта [%s]:%s' "$C_OK" "$ADMIN_LOGIN" "$C_0") " l
     l="${l:-$ADMIN_LOGIN}"
     if ! [[ "$l" =~ ^[A-Za-z0-9_.-]{3,}$ ]]; then
-        bad "годятся латиница, цифры, _ . - и минимум 3 символа"; return
+        bad "Годятся латиница, цифры, _ . - и минимум 3 символа"; return
     fi
-    ADMIN_LOGIN="$l"; ok "логин администратора: $ADMIN_LOGIN"
+    ADMIN_LOGIN="$l"; ok "Логин администратора: ${C_B}${ADMIN_LOGIN}${C_0}"
 }
 
 settings_menu() {
@@ -198,12 +200,12 @@ settings_menu() {
         printf '   %s[1]%s  Порт сайта            %s%s%s  ·  https %s\n' "$C_CY" "$C_0" "$C_B" "$PORT" "$C_0" "$((PORT+1))"
 
         printf '\n   %sБАЗА ДАННЫХ%s   %sскрипт впишет сам%s\n' "$C_DIM" "$C_0" "$C_DIM" "$C_0"
-        printf '   %s[2]%s  Пароль root           %s\n' "$C_CY" "$C_0" "$(mask "$ROOT_PW")"
-        printf '   %s[3]%s  Пароль bitrix         %s\n' "$C_CY" "$C_0" "$(mask "$USER_PW")"
+        printf '   %s[2]%s  Пароль root           %s%s%s\n' "$C_CY" "$C_0" "$C_F" "$(mask "$ROOT_PW")" "$C_0"
+        printf '   %s[3]%s  Пароль bitrix         %s%s%s\n' "$C_CY" "$C_0" "$C_F" "$(mask "$USER_PW")" "$C_0"
 
         printf '\n   %sАДМИНИСТРАТОР САЙТА%s   %sвведёте в мастере сами%s\n' "$C_DIM" "$C_0" "$C_DIM" "$C_0"
         printf '   %s[4]%s  Логин                 %s%s%s\n' "$C_CY" "$C_0" "$C_B" "$ADMIN_LOGIN" "$C_0"
-        printf '   %s[5]%s  Пароль                %s\n' "$C_CY" "$C_0" "$(mask "$ADMIN_PW")"
+        printf '   %s[5]%s  Пароль                %s%s%s\n' "$C_CY" "$C_0" "$C_F" "$(mask "$ADMIN_PW")" "$C_0"
 
         printf '\n   %sНАБОР КОНТЕЙНЕРОВ%s\n' "$C_DIM" "$C_0"
         printf '   %s[6]%s  Переключить           %sсейчас%s %s%s%s %s· %s%s\n' \
@@ -214,7 +216,7 @@ settings_menu() {
         printf '   %s[0]%s  Назад\n\n' "$C_DIM" "$C_0"
 
         local c
-        if ! read -rp "  Выбор: " c; then echo; return; fi
+        if ! read -rp "$(printf '  %sВыбор (0 — назад):%s' "$C_OK" "$C_0") " c; then echo; return; fi
         case "$c" in
             1) ask_port ;;
             2) ask_pw root ;;
@@ -222,16 +224,16 @@ settings_menu() {
             4) ask_login ;;
             5) ask_pw admin ;;
             6) if [ "$SETCHOICE" = 1 ]; then SETCHOICE=2; else SETCHOICE=1; fi
-               set_profile; ok "набор: $SETNAME, $SETINFO" ;;
+               set_profile; ok "Набор: $SETNAME, $SETINFO" ;;
             7) echo
-               info "MySQL root ......: $ROOT_PW"
-               info "MySQL bitrix ....: $USER_PW"
-               info "Админ логин .....: $ADMIN_LOGIN"
-               info "Админ пароль ....: $ADMIN_PW" ;;
+               info "MySQL root ......: ${C_F}${ROOT_PW}${C_0}"
+               info "MySQL bitrix ....: ${C_F}${USER_PW}${C_0}"
+               info "Админ логин .....: ${C_B}${ADMIN_LOGIN}${C_0}"
+               info "Админ пароль ....: ${C_F}${ADMIN_PW}${C_0}" ;;
             8) ROOT_PW="$(genpw)"; USER_PW="$(genpw)"; ADMIN_PW="$(genpw)"
-               ok "три пароля сгенерированы заново" ;;
+               ok "Три пароля сгенерированы заново" ;;
             0) return ;;
-            *) bad "нет такого пункта" ;;
+            *) bad "Нет такого пункта" ;;
         esac
     done
 }
@@ -243,23 +245,25 @@ do_install() (
     set_profile
 
     step "Будет сделано"
-    info "порт сайта ..... $PORT (https $((PORT+1)))"
-    info "набор .......... $SETNAME, $SETINFO"
-    info "выключаются .... $DISABLE"
-    info "каталог ........ $WORK"
+    info "Порт сайта ..... $PORT (https $((PORT+1)))"
+    info "Набор .......... $SETNAME, $SETINFO"
+    info "Выключаются .... $DISABLE"
+    info "Каталог ........ $WORK"
     echo
-    local go; read -rp "  Начинаем? [y/N]: " go
+    local go
+    printf '  %sy и Enter — начать, просто Enter — отмена%s\n' "$C_DIM" "$C_0"
+    read -rp "$(printf '  %sНачинаем? [y/N]:%s' "$C_OK" "$C_0") " go
     [[ "${go,,}" == "y" ]] || { echo; info "Отменено."; exit 10; }
 
     step "[1/6] Системные пакеты"
     export DEBIAN_FRONTEND=noninteractive
-    spin "обновляю список пакетов" apt-get update -qq
-    spin "ставлю ca-certificates, curl, gnupg, git, unzip" \
+    spin "Обновляю список пакетов" apt-get update -qq
+    spin "Ставлю ca-certificates, curl, gnupg, git, unzip" \
          apt-get install -y -qq ca-certificates curl gnupg git unzip
 
     step "[2/6] Docker"
     if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
-        ok "уже установлен: $(docker --version | cut -d, -f1)"
+        ok "Уже установлен: $(docker --version | cut -d, -f1)"
     else
         local pkg
         for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
@@ -271,22 +275,22 @@ do_install() (
         . /etc/os-release
         printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu %s stable\n' \
             "$(dpkg --print-architecture)" "$VERSION_CODENAME" > /etc/apt/sources.list.d/docker.list
-        spin "обновляю список пакетов с репозиторием Docker" apt-get update -qq
-        spin "ставлю Docker Engine и Compose, около 400 МБ" \
+        spin "Обновляю список пакетов с репозиторием Docker" apt-get update -qq
+        spin "Ставлю Docker Engine и Compose, около 400 МБ" \
              apt-get install -y -qq docker-ce docker-ce-cli containerd.io \
              docker-buildx-plugin docker-compose-plugin
-        spin "включаю службу docker" systemctl enable --now docker
-        ok "установлен: $(docker --version | cut -d, -f1)"
+        spin "Включаю службу docker" systemctl enable --now docker
+        ok "Установлен: $(docker --version | cut -d, -f1)"
     fi
     ok "compose: $(docker compose version --short)"
 
     step "[3/6] Окружение Битрикса"
     mkdir -p "$ENV_DIR"; cd "$ENV_DIR"
-    info "скачивание архива, 693 МБ…"
+    info "Скачивание архива, 693 МБ…"
     wget -q --show-progress "$ZIP_URL" -O main.zip
-    spin "распаковываю архив" unzip -q main.zip
+    spin "Распаковываю архив" unzip -q main.zip
     [ -f "$WORK/docker-compose.yml" ] || die "Распаковка не удалась: нет $WORK/docker-compose.yml"
-    ok "распаковано в $WORK"
+    ok "Распаковано в $WORK"
 
     step "[4/6] Настройка"
     cd "$WORK"
@@ -301,7 +305,7 @@ s += 'MYSQL_DATABASE=bitrix\nMYSQL_USER=bitrix\nMYSQL_PASSWORD="%s"\n' % os.envi
 io.open(p, "w", encoding="utf-8").write(s)
 PY
     chmod 600 .env_mysql
-    ok "пароли записаны в .env_mysql"
+    ok "Пароли записаны в .env_mysql"
 
     DISABLE="$DISABLE" PORT="$PORT" PORT_HTTPS="$((PORT+1))" python3 - <<'PY'
 import io, os, re
@@ -353,22 +357,22 @@ io.open(p + ".orig", "w", encoding="utf-8").write(s)
 s = re.sub(r"(?m)^(\s*)(include\s+/etc/nginx/inc/push(?:_secure)?\.conf;)", r"\1#\2", s)
 io.open(p, "w", encoding="utf-8").write(s)
 PY
-        ok "в конфиге nginx отключены push-конфиги (контейнеры push выключены)"
+        ok "В конфиге nginx отключены push-конфиги (контейнеры push выключены)"
     fi
 
     docker compose config -q || die "compose-файл стал некорректным. Оригинал: $WORK/docker-compose.yml.orig"
     local planned; planned=$(docker compose config --services | wc -l)
-    ok "сервисов в конфигурации: $planned"
-    ok "порт сайта: $PORT"
+    ok "Сервисов в конфигурации: $planned"
+    ok "Порт сайта: $PORT"
 
     step "[5/6] Запуск контейнеров"
-    info "сейчас скачаются образы — это самая долгая часть, 5–15 минут."
+    info "Сейчас скачаются образы — это самая долгая часть, 5–15 минут."
     info "Docker покажет свой прогресс по каждому образу."
     echo
     docker compose up -d
     local up; up=$(docker compose ps --services --filter status=running | wc -l)
-    [ "$up" -ge "$planned" ] || warn "запущено $up из $planned, проверьте: docker compose ps"
-    ok "контейнеров работает: $up"
+    [ "$up" -ge "$planned" ] || warn "Запущено $up из $planned, проверьте: docker compose ps"
+    ok "Контейнеров работает: $up"
 
     local ngx_ok=no i t0=$SECONDS
     for i in $(seq 1 12); do
@@ -394,7 +398,7 @@ PY
         sleep 5
     done
     [ -t 1 ] && printf '\r%*s\r' 60 ""
-    ok "база bitrix готова, пользователь bitrix подключается $(printf '%s(%sс)%s' "$C_DIM" "$((SECONDS - t1))" "$C_0")"
+    ok "База bitrix готова, пользователь bitrix подключается $(printf '%s(%sс)%s' "$C_DIM" "$((SECONDS - t1))" "$C_0")"
 
     step "[6/6] Скрипт установки"
     docker compose exec -T --user=bitrix php sh -lc "cd /opt/www/ && wget -q $SETUP_URL"
@@ -406,12 +410,14 @@ PY
     local zipsize; zipsize=$(du -h "$ENV_DIR/main.zip" 2>/dev/null | cut -f1)
     info "Архив main.zip (${zipsize:-693M}) распакован, для работы сайта больше не нужен."
     info "Пригодится только если захотите развернуть окружение заново без скачивания."
-    local rmzip; read -rp "  Удалить его? [Y/n]: " rmzip
+    local rmzip
+    printf '  %sEnter — удалить, n и Enter — оставить%s\n' "$C_DIM" "$C_0"
+    read -rp "$(printf '  %sУдалить его? [Y/n]:%s' "$C_OK" "$C_0") " rmzip
     if [[ "${rmzip,,}" != "n" ]]; then
         rm -f "$ENV_DIR/main.zip"
-        ok "архив удалён, место освобождено"
+        ok "Архив удалён, место освобождено"
     else
-        info "архив оставлен: $ENV_DIR/main.zip"
+        info "Архив оставлен: $ENV_DIR/main.zip"
     fi
 )
 
@@ -436,8 +442,21 @@ show_params() {
     step "Параметры для мастера установки"
     printf '  %s%s%s\n' "$C_DIM" "$src" "$C_0"
 
-    printf '\n  %sУСТАНОВЩИК%s\n' "$C_DIM" "$C_0"
-    printf '    %shttp://%s:%s/bitrixsetup.php%s\n' "$C_CY" "$ip" "$PORT" "$C_0"
+    # ── адрес установщика крупно, в рамке ──────────────────────────
+    local url label inner bar pad1 pad2
+    url="http://${ip}:${PORT}/bitrixsetup.php"
+    label="ОТКРОЙТЕ ЭТО В БРАУЗЕРЕ"
+    inner=$(( ${#url} > ${#label} ? ${#url} : ${#label} ))
+    inner=$(( inner + 4 ))
+    bar=$(printf '═%.0s' $(seq 1 "$inner"))
+    pad1=$(printf '%*s' $(( inner - ${#label} - 2 )) '')
+    pad2=$(printf '%*s' $(( inner - ${#url}   - 2 )) '')
+
+    echo
+    printf '  %s%s╔%s╗%s\n'        "$C_B" "$C_OK" "$bar" "$C_0"
+    printf '  %s%s║%s  %s%s║%s\n'  "$C_B" "$C_OK" "$C_0" "$label" "$pad1" "$C_0"
+    printf '  %s%s║%s  %s%s%s%s%s║%s\n' "$C_B" "$C_OK" "$C_0" "$C_B" "$url" "$C_0" "$pad2" "$C_OK$C_B" "$C_0"
+    printf '  %s%s╚%s╝%s\n'        "$C_B" "$C_OK" "$bar" "$C_0"
 
     printf '\n  %sЭКРАН «СОЗДАНИЕ БАЗЫ ДАННЫХ»%s\n' "$C_DIM" "$C_0"
     printf '    %sСервер%s ....................  %s%s%s\n'        "$C_DIM" "$C_0" "$C_B" "mysql" "$C_0"
@@ -464,41 +483,102 @@ show_params() {
     echo
 }
 
+# роль контейнера по имени
+role_of() {
+    case "$1" in
+        *nginx)     echo "веб-сервер, принимает запросы браузера" ;;
+        *php)       echo "выполняет код Битрикса" ;;
+        *mysql)     echo "база данных" ;;
+        *postgres)  echo "вторая база, Битриксом не используется" ;;
+        *cron)      echo "агенты и отложенные задачи" ;;
+        *redis)     echo "кэш и сессии" ;;
+        *memcached) echo "кэш" ;;
+        *sphinx)    echo "полнотекстовый поиск" ;;
+        *push_sub|*push_pub) echo "уведомления в реальном времени" ;;
+        *ssl)       echo "самоподписанные сертификаты" ;;
+        *lego)      echo "сертификаты Let’s Encrypt" ;;
+        *)          echo "" ;;
+    esac
+}
+
 show_state() {
     step "Состояние сервера"
+
+    printf '\n  %sDOCKER%s\n' "$C_DIM" "$C_0"
     if command -v docker >/dev/null 2>&1; then
-        ok "Docker: $(docker --version | cut -d, -f1)"
-    else
-        info "Docker не установлен"
-    fi
-    if [ -d "$WORK" ]; then
-        ok "окружение: $WORK"
-        if docker compose -f "$WORK/docker-compose.yml" ps >/dev/null 2>&1; then
-            echo
-            (cd "$WORK" && docker compose ps --format "   {{.Name}}  {{.Status}}") 2>/dev/null
+        ok "Установлен: $(docker --version | sed 's/Docker version //; s/,.*//')"
+        if systemctl is-active docker >/dev/null 2>&1; then
+            ok "Служба работает и включена в автозапуск"
+        else
+            bad "Служба docker остановлена"
         fi
     else
-        info "окружение не развёрнуто"
+        info "Не установлен"
+        echo; return
     fi
+
+    printf '\n  %sОКРУЖЕНИЕ%s\n' "$C_DIM" "$C_0"
+    if [ -d "$WORK" ]; then
+        ok "Каталог: $WORK"
+    else
+        info "Не развёрнуто — установка не запускалась"
+        echo; return
+    fi
+
+    printf '\n  %sКОНТЕЙНЕРЫ%s  %sстолбец «работает» — сколько времени без перезапуска%s\n' \
+           "$C_DIM" "$C_0" "$C_DIM" "$C_0"
+    local line name st role
+    while IFS='|' read -r name st; do
+        [ -z "$name" ] && continue
+        role="$(role_of "$name")"
+        printf '    %s%-16s%s %s%-16s%s %s%s%s\n' \
+               "$C_B" "$name" "$C_0" "$C_OK" "$st" "$C_0" "$C_DIM" "$role" "$C_0"
+    done < <(cd "$WORK" && docker compose ps --format '{{.Name}}|{{.Status}}' 2>/dev/null)
+
+    printf '\n  %sСАЙТ%s\n' "$C_DIM" "$C_0"
+    local code
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${PORT}/" 2>/dev/null)
+    case "$code" in
+        200) ok "Отвечает на порту $PORT — код 200, страница отдаётся" ;;
+        403) warn "Код 403: корень сайта пуст, мастер установки ещё не пройден" ;;
+        000) bad "Не отвечает на порту $PORT" ;;
+        *)   warn "Отвечает кодом $code" ;;
+    esac
+    local tables
+    tables=$(cd "$WORK" && docker compose exec -T mysql mysql -u root \
+             -p"$(grep MYSQL_ROOT_PASSWORD "$WORK/.env_mysql" 2>/dev/null | cut -d'"' -f2)" \
+             -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='bitrix';" 2>/dev/null)
+    if [ "${tables:-0}" -gt 0 ]; then
+        ok "В базе bitrix: $tables таблиц — сайт установлен"
+    else
+        info "База bitrix пуста — Битрикс ещё не установлен"
+    fi
+
+    printf '\n  %sМЕСТО НА ДИСКЕ%s\n' "$C_DIM" "$C_0"
+    local imgs vols
+    imgs=$(docker system df --format '{{.Type}}|{{.Size}}' 2>/dev/null | awk -F'|' '/Images/{print $2}')
+    vols=$(docker system df --format '{{.Type}}|{{.Size}}' 2>/dev/null | awk -F'|' '/Volumes/{print $2}')
+    printf '    %sсвободно на диске%s ......  %s%s%s\n' "$C_DIM" "$C_0" "$C_B" "$(df -h / | awk 'NR==2{print $4}')" "$C_0"
+    printf '    %sобразы Docker%s ..........  %s\n'     "$C_DIM" "$C_0" "${imgs:-?}"
+    printf '    %sтома с данными%s .........  %s\n'     "$C_DIM" "$C_0" "${vols:-?}"
     echo
-    info "свободно на диске: $(df -h / | awk 'NR==2{print $4}')"
 }
 
 remove_bitrix() {
     if [ -f "$WORK/docker-compose.yml" ]; then
-        info "останавливаю контейнеры и стираю тома…"
+        info "Останавливаю контейнеры и стираю тома…"
         (cd "$WORK" && docker compose down -v) >/dev/null 2>&1 || true
     fi
     rm -rf "$ENV_DIR"
-    ok "контейнеры, тома и каталог $ENV_DIR удалены"
+    ok "Контейнеры, тома и каталог $ENV_DIR удалены"
 }
 
 remove_docker() {
-    info "останавливаю службу…"
+    info "Останавливаю службу…"
     systemctl stop docker docker.socket >/dev/null 2>&1 || true
     systemctl disable docker >/dev/null 2>&1 || true
 
-    info "удаляю пакеты…"
+    info "Удаляю пакеты…"
     export DEBIAN_FRONTEND=noninteractive
     apt-get purge -y -qq docker-ce docker-ce-cli >/dev/null 2>&1 || true
     apt-get purge -y -qq containerd.io >/dev/null 2>&1 || true
@@ -508,7 +588,7 @@ remove_docker() {
     apt-get purge -y -qq docker.io containerd >/dev/null 2>&1 || true
     apt-get autoremove -y -qq >/dev/null 2>&1 || true
 
-    info "удаляю данные, репозиторий и остатки…"
+    info "Удаляю данные, репозиторий и остатки…"
     rm -rf /var/lib/docker /var/lib/containerd
     rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.asc
     ip link delete docker0 >/dev/null 2>&1 || true
@@ -519,15 +599,15 @@ remove_docker() {
 
     step "Проверка, что следов не осталось"
     local left=0
-    dpkg -l 2>/dev/null | grep -qE "docker|containerd" && { bad "остались пакеты"; left=1; } || ok "пакетов нет"
-    command -v docker >/dev/null 2>&1       && { bad "остался бинарник docker"; left=1; } || ok "бинарников нет"
-    [ -e /var/lib/docker ]                  && { bad "остался /var/lib/docker"; left=1; } || ok "каталогов данных нет"
-    getent group docker >/dev/null 2>&1     && { bad "осталась группа docker"; left=1; } || ok "группы docker нет"
-    ip link show docker0 >/dev/null 2>&1    && { bad "остался мост docker0"; left=1; }   || ok "моста docker0 нет"
+    dpkg -l 2>/dev/null | grep -qE "docker|containerd" && { bad "Остались пакеты"; left=1; } || ok "Пакетов нет"
+    command -v docker >/dev/null 2>&1       && { bad "Остался бинарник docker"; left=1; } || ok "Бинарников нет"
+    [ -e /var/lib/docker ]                  && { bad "Остался /var/lib/docker"; left=1; } || ok "Каталогов данных нет"
+    getent group docker >/dev/null 2>&1     && { bad "Осталась группа docker"; left=1; } || ok "Группы docker нет"
+    ip link show docker0 >/dev/null 2>&1    && { bad "Остался мост docker0"; left=1; }   || ok "Моста docker0 нет"
     echo
     if [ "$left" -eq 0 ]; then
-        ok "сервер чистый"
-        info "в iptables останутся цепочки DOCKER — они исчезнут при перезагрузке"
+        ok "Сервер чистый"
+        info "В iptables останутся цепочки DOCKER — они исчезнут при перезагрузке"
     fi
 }
 
@@ -563,7 +643,8 @@ do_reinstall() {
 
     echo
     local a
-    if ! read -rp "  Продолжить? [y/N]: " a; then echo; return; fi
+    printf '  %sy и Enter — продолжить, просто Enter — отмена%s\n' "$C_DIM" "$C_0"
+    if ! read -rp "$(printf '  %sПродолжить? [y/N]:%s' "$C_OK" "$C_0") " a; then echo; return; fi
     [[ "${a,,}" == "y" ]] || { info "Отменено."; return; }
 
     if [ -e "$ENV_DIR" ]; then
@@ -574,7 +655,7 @@ do_reinstall() {
     CHECKS=unknown; INSTALLED=no
     do_checks
     if [ "$CHECKS" != passed ]; then
-        echo; bad "проверка не прошла — установка не запущена, смотрите крестики выше"
+        echo; bad "Проверка не прошла — установка не запущена, смотрите крестики выше"
         return
     fi
 
@@ -584,7 +665,7 @@ do_reinstall() {
         printf '\n  %s✓ Переустановка завершена.%s\n' "$C_OK" "$C_0"
         show_params
     elif [ "$rc" -ne 10 ]; then
-        bad "установка прервалась, код $rc — смотрите сообщение выше"
+        bad "Установка прервалась, код $rc — смотрите сообщение выше"
     fi
 }
 
@@ -598,12 +679,13 @@ do_remove() {
         printf '   %s[0]%s  Назад\n\n' "$C_DIM" "$C_0"
 
         local c
-        if ! read -rp "  Выбор: " c; then echo; return; fi
+        if ! read -rp "$(printf '  %sВыбор (0 — назад):%s' "$C_OK" "$C_0") " c; then echo; return; fi
         case "$c" in
             1) echo
                warn "Будут стёрты контейнеры, тома с базой и сайтом, каталог $ENV_DIR."
                local a
-               printf '  Введите %s%sУДАЛИТЬ%s для подтверждения: ' "$C_B" "$C_NO" "$C_0"
+               printf '  %sПередумали — просто нажмите Enter.%s\n' "$C_DIM" "$C_0"
+               printf '  %sВведите%s %s%sУДАЛИТЬ%s %sдля подтверждения:%s ' "$C_OK" "$C_0" "$C_B" "$C_NO" "$C_0" "$C_OK" "$C_0"
                read -r a
                [ "$a" = "УДАЛИТЬ" ] || { info "Отменено."; continue; }
                remove_bitrix
@@ -612,9 +694,12 @@ do_remove() {
             2) echo
                warn "Будут стёрты: сайт, база, каталог $ENV_DIR, все пакеты Docker,"
                warn "все образы и тома в /var/lib/docker, репозиторий и ключ."
-               warn "Если на сервере есть другие контейнеры — они тоже погибнут."
+               warn "Команда rm -rf /var/lib/docker стирает всё хранилище Docker:"
+               warn "контейнеры, образы и тома любых других проектов на сервере"
+               warn "будут удалены вместе с их данными."
                local a
-               printf '  Введите %s%sУДАЛИТЬ ВСЁ%s для подтверждения: ' "$C_B" "$C_NO" "$C_0"
+               printf '  %sПередумали — просто нажмите Enter.%s\n' "$C_DIM" "$C_0"
+               printf '  %sВведите%s %s%sУДАЛИТЬ ВСЁ%s %sдля подтверждения:%s ' "$C_OK" "$C_0" "$C_B" "$C_NO" "$C_0" "$C_OK" "$C_0"
                read -r a
                [ "$a" = "УДАЛИТЬ ВСЁ" ] || { info "Отменено."; continue; }
                remove_bitrix
@@ -622,7 +707,7 @@ do_remove() {
                INSTALLED=no; CHECKS=unknown
                return ;;
             0) return ;;
-            *) bad "нет такого пункта" ;;
+            *) bad "Нет такого пункта" ;;
         esac
     done
 }
@@ -671,12 +756,12 @@ while true; do
 
     printf '\n   %s[0]%s  Выход\n\n' "$C_DIM" "$C_0"
 
-    if ! read -rp "  Выбор: " choice; then echo; info "Ввод закончился — выход."; echo; exit 0; fi
+    if ! read -rp "$(printf '  %sВыбор:%s' "$C_OK" "$C_0") " choice; then echo; info "Ввод закончился — выход."; echo; exit 0; fi
     case "$choice" in
         1) do_checks; pause ;;
         2) settings_menu ;;
         3) if [ "$CHECKS" != passed ]; then
-               bad "сначала пункт 1 — проверка сервера"
+               bad "Сначала пункт 1 — проверка сервера"
            else
                do_install; rc=$?
                if [ "$rc" -eq 0 ]; then
@@ -686,17 +771,17 @@ while true; do
                elif [ "$rc" -eq 10 ]; then
                    :
                else
-                   bad "установка прервалась, код $rc — смотрите сообщение выше"
+                   bad "Установка прервалась, код $rc — смотрите сообщение выше"
                fi
            fi
            pause ;;
         4) do_reinstall; pause ;;
         5) show_state; pause ;;
         6) if [ "$INSTALLED" = yes ] || [ -f "$WORK/docker-compose.yml" ]; then show_params
-           else bad "установка ещё не выполнена"; fi
+           else bad "Установка ещё не выполнена"; fi
            pause ;;
         7) do_remove; pause ;;
         0) echo; info "Выход."; echo; exit 0 ;;
-        *) bad "нет такого пункта" ;;
+        *) bad "Нет такого пункта" ;;
     esac
 done
